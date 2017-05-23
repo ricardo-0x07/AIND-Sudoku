@@ -30,14 +30,19 @@ def diagonal(rows, cols):
     return dia
 
 boxes = cross(rows, cols)
+# Diagonal units for od diagonal sudoku
 diagonal_units = diagonal(rows, cols)
 i_diagonal_units = diagonal(rows[::-1], cols)
+combined_diagonal_units_list = diagonal_units + i_diagonal_units
+combined_diagonal_units = [diagonal_units] + [i_diagonal_units]
+
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
 square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
 unitlist = row_units + column_units + square_units
+# List of units for diagonal sudoku
 diagonal_unit_list = row_units + column_units + square_units + [diagonal_units] + [i_diagonal_units]
-units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
+units = dict((s, [u for u in diagonal_unit_list if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
 def naked_twins(values):
     """Eliminate values using the naked twins strategy.
@@ -49,9 +54,6 @@ def naked_twins(values):
     """
 
     # Find all instances of naked twins
-    # Eliminate the naked twins as possibilities for their peers
-    # display(values)
-    copy = values.copy()
     for unit in unitlist:
         possible_twins = [box for box in unit if len(values[box]) == 2 ]
         for s in possible_twins:
@@ -60,7 +62,9 @@ def naked_twins(values):
                     for dx in values[twin]:
                         for sx in unit:
                             if values[sx] != values[twin] and len(values[sx]) > 1 and dx in values[sx]:
+                                # Eliminate the naked twins as possibilities for their peers
                                 values[sx] = values[sx].replace(dx,'')
+    # print('naked twins values')
     # display(values)
     return values
 
@@ -109,13 +113,11 @@ def eliminate(values):
     Returns:
         Resulting Sudoku in dictionary form after eliminating values.
     """
-    for key, value in values.items():
-        d = value
-        s = key
-        if (len(d) == 1):
-            for s2 in peers[s]:
-                if d in values[s2] and len(values[s2]) > 1:
-                    values[s2] = values[s2].replace(d,'')
+    solved_values = [box for box in values.keys() if len(values[box]) == 1]
+    for box in solved_values:
+        digit = values[box]
+        for peer in peers[box]:
+            values[peer] = values[peer].replace(digit,'')
     return values
 
 def only_choice(values):
@@ -124,9 +126,16 @@ def only_choice(values):
     Input: A sudoku in dictionary form.
     Output: The resulting sudoku in dictionary form.
     """
+    # for unit in combined_diagonal_units:
+    #     for digit in '123456789':
+    #         dplaces = [box for box in unit if digit in values[box]]
+    #         dplaces
+    #         if len(dplaces) == 1:
+    #             values[dplaces[0]] = digit
     for unit in diagonal_unit_list:
         for digit in '123456789':
-            dplaces = [box for box in unit if digit in values[box]]
+            dplaces = [box for box in unit if digit in values[box]] # and box not in combined_diagonal_units_list]
+            dplaces
             if len(dplaces) == 1:
                 values[dplaces[0]] = digit
     return values
@@ -137,11 +146,13 @@ def reduce_puzzle(values):
         # Check how many boxes have a determined value
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
 
+        # Your code here: Use the Only Choice Strategy
+        values = only_choice(values)
+
         # Your code here: Use the Eliminate Strategy
         values = eliminate(values)
 
-        # Your code here: Use the Only Choice Strategy
-        values = only_choice(values)
+        values = naked_twins(values)
 
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
